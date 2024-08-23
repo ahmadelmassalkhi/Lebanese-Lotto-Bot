@@ -20,40 +20,9 @@ class Bot:
             raise ValueError("Invalid year.")
         return f'https://www.lebanon-lotto.com/past_results_list.php?pastyearsresults={year}'
     
-
-    def extract_draws_year(self, year: int):
-        try:
-            # Validate year
-            if not self.valid_year(year):
-                raise ValueError(f'Invalid year {year}.')
-
-            # Get URL
-            response = requests.get(self.get_year_url(year))
-
-            # Parse the HTML content
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            # Find all <a> tags with title attribute starting with "Lotto Lebanon draw"
-            lotto_links = soup.find_all(
-                'a', title=lambda title: title and title.startswith('Lotto Lebanon draw'))
-
-            # Process lotto links & return results
-            draws = []
-            for link in reversed(lotto_links):
-                draws.append(self.extract_draw(link))
-                print(draws[-1].to_string())
-            return draws
-        
-        # handle exceptions
-        except ValueError as ve:
-            print(f"ValueError: {ve}, year {year}")
-        except ConnectionError as ce:
-            print(f"ConnectionError: {ce}, year {year}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}, year {year}")
-        exit(1)
-
-
+    #####################################################################################################
+    #####################################################################################################
+            
     def extract_draw(self, a_tag):
         # Extract draw number from title
         draw_number = a_tag.get('title').split()[-1]
@@ -76,10 +45,9 @@ class Bot:
                 # Fetch the web page content
                 response = requests.get(draw_url)
                 response.raise_for_status()  # Raise an exception for HTTP errors
-                html_content = response.content
 
                 # Parse HTML using BeautifulSoup
-                soup = BeautifulSoup(html_content, 'html.parser')
+                soup = BeautifulSoup(response.content, 'html.parser')
 
                 # Find all img tags with the specified alt attribute
                 img_tags = soup.find_all('img', alt=Bot.ALT_TEXT)
@@ -104,8 +72,39 @@ class Bot:
 
         print(f'Failed to fetch draw result from {draw_url} after {max_retries} attempts.')
         return []
-
     
+    
+    #####################################################################################################
+    #####################################################################################################
+    
+    def extract_draws_year(self, year: int):
+        try:
+            # Validate year
+            if not self.valid_year(year):
+                raise ValueError(f'Invalid year {year}.')
+
+            # Parse the HTML content
+            soup = BeautifulSoup(requests.get(self.get_year_url(year)).content, 'html.parser')
+
+            # Find all <a> tags with title attribute starting with "Lotto Lebanon draw"
+            lotto_links = soup.find_all('a', title=lambda title: title and title.startswith('Lotto Lebanon draw'))
+
+            # Process lotto links & return results
+            draws = []
+            for link in reversed(lotto_links):
+                draws.append(self.extract_draw(link))
+                print(draws[-1].to_string())
+            return draws
+        
+        # handle exceptions
+        except ValueError as ve:
+            print(f"ValueError: {ve}, year {year}")
+        except ConnectionError as ce:
+            print(f"ConnectionError: {ce}, year {year}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}, year {year}")
+        exit(1)
+
     def extract_draws_years(self, start: int, finish: int):
         if not self.valid_year(start):
             raise ValueError(f'Invalid year {start}.')
@@ -123,13 +122,42 @@ class Bot:
                     print(f'Year {year} generated an exception: {e}')
         return draws
     
-
+    #####################################################################################################
+    #####################################################################################################
+    
     def extract_draws_current_year(self):
         return self.extract_draws_years(datetime.now().year, datetime.now().year)
     
 
     def extract_draws_all_time(self):
         return self.extract_draws_years(Bot.MIN_YEAR, datetime.now().year)
+    
+    
+    def extract_latest_draw(self):
+        try:
+            year = datetime.now().year
+            
+            # request the html
+            request = requests.get(self.get_year_url(year))
+
+            # Parse the HTML content
+            soup = BeautifulSoup(request.content, 'html.parser')
+
+            # Find all <a> tags with title attribute starting with "Lotto Lebanon draw"
+            lotto_links = soup.find_all('a', title=lambda title: title and title.startswith('Lotto Lebanon draw'))
+
+            # extract & return latest draw
+            return self.extract_draw(lotto_links[0])
+        
+        # handle exceptions
+        except ValueError as ve:
+            print(f"ValueError: {ve}, year {year}")
+        except ConnectionError as ce:
+            print(f"ConnectionError: {ce}, year {year}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}, year {year}")
+        quit()
+
     
 if __name__ == "__main__":
     start_time = time.time()
